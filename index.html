@@ -11,9 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script type="module">
-// ════════════════════════════════════════════════════════════════════
-//  FIREBASE MODULE
-// ════════════════════════════════════════════════════════════════════
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import { getDatabase, ref, set, get, push, remove, update, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
@@ -32,9 +29,6 @@ const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 const DB_PATH = "schedule_v2";
 
-// ════════════════════════════════════════════════════════════════════
-//  INITIAL DATA
-// ════════════════════════════════════════════════════════════════════
 const INITIAL_DATA = {
   days: {
     friday: {
@@ -112,9 +106,6 @@ const INITIAL_DATA = {
   }
 };
 
-// ════════════════════════════════════════════════════════════════════
-//  CONSTANTS
-// ════════════════════════════════════════════════════════════════════
 const SUBJECT_ICONS = {
   math:"∑", phys:"⚛", chem:"⚗", bio:"⬡",
   eng:"Aa", arab:"ع", islm:"☽"
@@ -130,9 +121,6 @@ const SUBJECT_COLORS = {
   bio:"#34d399", eng:"#fbbf24", arab:"#f87171", islm:"#38bdf8"
 };
 
-// ════════════════════════════════════════════════════════════════════
-//  STATE
-// ════════════════════════════════════════════════════════════════════
 let scheduleData = null;
 let undoStack    = [];
 let redoStack    = [];
@@ -142,9 +130,6 @@ let countdownInterval = null;
 let activityLog  = [];
 let dragState    = null;
 
-// ════════════════════════════════════════════════════════════════════
-//  UNDO / REDO
-// ════════════════════════════════════════════════════════════════════
 function pushUndo(snapshot) {
   undoStack.push(JSON.stringify(snapshot));
   redoStack = [];
@@ -177,9 +162,6 @@ window.handleRedo = async function() {
   updateUndoRedoBtns();
 };
 
-// ════════════════════════════════════════════════════════════════════
-//  ACTIVITY LOG
-// ════════════════════════════════════════════════════════════════════
 function logActivity(msg) {
   const now = new Date();
   const timeStr = now.toLocaleTimeString("ar-IQ", { hour:"2-digit", minute:"2-digit" });
@@ -187,9 +169,6 @@ function logActivity(msg) {
   if (activityLog.length > 50) activityLog.pop();
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  TIME UTILS
-// ════════════════════════════════════════════════════════════════════
 function parseTimeToMinutes(timeStr) {
   if (!timeStr || timeStr === "—" || !timeStr.trim()) return 9999;
   const eng = String(timeStr).replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
@@ -207,9 +186,6 @@ function getDayOfWeek() {
   return ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date().getDay()];
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  FIREBASE OPS  (with retry + offline cache)
-// ════════════════════════════════════════════════════════════════════
 const offlineCache = (() => {
   try {
     return {
@@ -233,7 +209,6 @@ async function retryAsync(fn, retries = 3, delay = 600) {
 async function initFirebase() {
   showSkeleton();
   try {
-    // Try cache first for instant paint
     const cached = offlineCache.get("sched_cache");
     if (cached?.days) {
       scheduleData = cached;
@@ -311,9 +286,6 @@ async function fbDuplicateLesson(dayId, lessonId) {
   showToast("تم تكرار الدرس ✓", "success");
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  STATISTICS
-// ════════════════════════════════════════════════════════════════════
 function computeStats() {
   if (!scheduleData?.days) return { exams:0, lecs:0, total:0, bySubject:{}, byDay:{}, byMode:{} };
   let exams=0, lecs=0, bySubject={}, byDay={}, byMode={};
@@ -329,7 +301,6 @@ function computeStats() {
   return { exams, lecs, total:exams+lecs, bySubject, byDay, byMode };
 }
 
-// Weekly heatmap data
 function getWeeklyData() {
   if (!scheduleData?.days) return [];
   return Object.entries(scheduleData.days)
@@ -342,9 +313,6 @@ function getWeeklyData() {
     });
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  NEXT LESSON
-// ════════════════════════════════════════════════════════════════════
 function findNextLesson() {
   if (!scheduleData?.days) return null;
   const now = new Date();
@@ -395,9 +363,6 @@ function updateNextLesson() {
   if (icon) icon.textContent = SUBJECT_ICONS[next.lesson.subject]||"📚";
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  TOAST
-// ════════════════════════════════════════════════════════════════════
 window.showToast = function(msg, type="info") {
   const cont = document.getElementById("toast-cont");
   const icons = { success:"✓", error:"✕", warn:"⚠", info:"ℹ" };
@@ -412,9 +377,6 @@ window.showToast = function(msg, type="info") {
   }, 3200);
 };
 
-// ════════════════════════════════════════════════════════════════════
-//  SEARCH / FILTER
-// ════════════════════════════════════════════════════════════════════
 function lessonMatchesFilter(lesson, dayId) {
   const q = filterState.q.toLowerCase();
   if (q && !lesson.nameAr?.toLowerCase().includes(q) && !SUBJECT_NAMES[lesson.subject]?.includes(q)) return false;
@@ -466,9 +428,6 @@ function populateDayFilter() {
   if (filterState.day) sel.value = filterState.day;
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  SKELETON
-// ════════════════════════════════════════════════════════════════════
 function showSkeleton() {
   const grid = document.getElementById("main-grid");
   if (!grid) return;
@@ -484,9 +443,6 @@ function showSkeleton() {
     </div>`).join('');
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  RENDER
-// ════════════════════════════════════════════════════════════════════
 function buildLessonHTML(lesson, dayId, lessonId) {
   const subj = lesson.subject||"math";
   const icon = SUBJECT_ICONS[subj]||"?";
@@ -581,9 +537,6 @@ function renderSchedule() {
   updateUndoRedoBtns();
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  ANALYTICS
-// ════════════════════════════════════════════════════════════════════
 function renderAnalytics(bySubject, exams, lecs) {
   const el = document.getElementById("analytics-chart");
   if (!el) return;
@@ -600,7 +553,6 @@ function renderAnalytics(bySubject, exams, lecs) {
     </div>`;
   }).join('');
 
-  // Donut
   const donutEl = document.getElementById("donut-svg");
   if (donutEl && (exams+lecs)>0) {
     const t = exams+lecs;
@@ -620,7 +572,6 @@ function renderAnalytics(bySubject, exams, lecs) {
   }
 }
 
-// Heatmap (days × density)
 function renderHeatmap() {
   const el = document.getElementById("heatmap");
   if (!el) return;
@@ -636,9 +587,6 @@ function renderHeatmap() {
   }).join('');
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  DRAG & DROP
-// ════════════════════════════════════════════════════════════════════
 function initDragDrop() {
   document.querySelectorAll(".ev[draggable]").forEach(ev => {
     ev.addEventListener("dragstart", onDragStart);
@@ -676,9 +624,6 @@ async function onDrop(e) {
   showToast("تم نقل الدرس ✓", "success");
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  MODAL: LESSON ADD/EDIT
-// ════════════════════════════════════════════════════════════════════
 window.openAdd  = function(dayId) { openLessonModal({ dayId, mode:"add" }); };
 window.openEdit = function(dayId, lessonId) {
   const lesson = scheduleData?.days?.[dayId]?.lessons?.[lessonId];
@@ -758,9 +703,6 @@ function openConfirm(msg, onConfirm) {
   };
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  EXPORT / IMPORT
-// ════════════════════════════════════════════════════════════════════
 window.exportJSON = function() {
   if (!scheduleData) return;
   const blob = new Blob([JSON.stringify(scheduleData, null, 2)], {type:"application/json"});
@@ -797,9 +739,6 @@ window.importJSON = function() {
   inp.click();
 };
 
-// ════════════════════════════════════════════════════════════════════
-//  ACTIVITY LOG PANEL
-// ════════════════════════════════════════════════════════════════════
 window.toggleActivityLog = function() {
   const panel = document.getElementById("activity-panel");
   if (!panel) return;
@@ -812,9 +751,6 @@ window.toggleActivityLog = function() {
   }
 };
 
-// ════════════════════════════════════════════════════════════════════
-//  COMMAND PALETTE
-// ════════════════════════════════════════════════════════════════════
 const COMMANDS = [
   { label:"إضافة درس جديد", icon:"＋", keys:"N", action:() => { closeCommandPalette(); openAdd(Object.keys(scheduleData?.days||{})[0]||"friday"); } },
   { label:"طباعة الجدول",   icon:"🖨", keys:"P", action:() => window.print() },
@@ -852,7 +788,6 @@ function renderCommands(q) {
 }
 window.runCommand = function(idx) { COMMANDS[idx]?.action(); closeCommandPalette(); };
 
-// Keyboard navigation in command palette
 document.addEventListener("keydown", e => {
   if (document.getElementById("cmd-palette").style.display==="flex") {
     const items = [...document.querySelectorAll(".cmd-item")];
@@ -863,9 +798,6 @@ document.addEventListener("keydown", e => {
   }
 });
 
-// ════════════════════════════════════════════════════════════════════
-//  DARK MODE
-// ════════════════════════════════════════════════════════════════════
 let darkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
 function applyTheme(dark) {
   document.documentElement.setAttribute("data-theme", dark?"dark":"light");
@@ -877,9 +809,6 @@ window.toggleTheme = function() { darkMode = !darkMode; applyTheme(darkMode); };
 applyTheme(darkMode);
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => { darkMode=e.matches; applyTheme(darkMode); });
 
-// ════════════════════════════════════════════════════════════════════
-//  GLOBAL KEYBOARD SHORTCUTS
-// ════════════════════════════════════════════════════════════════════
 document.addEventListener("keydown", e => {
   const mod = e.metaKey||e.ctrlKey;
   if (e.key==="Escape") { closeModal(); closeCommandPalette(); document.getElementById("activity-panel")?.classList.remove("panel-open"); }
@@ -891,11 +820,7 @@ document.addEventListener("keydown", e => {
   if (mod && e.key==="d") { e.preventDefault(); toggleTheme(); }
 });
 
-// ════════════════════════════════════════════════════════════════════
-//  INIT
-// ════════════════════════════════════════════════════════════════════
 document.addEventListener("DOMContentLoaded", () => {
-  // Modal overlay click-outside
   document.getElementById("modal-overlay").addEventListener("click", e => {
     if (e.target===document.getElementById("modal-overlay")) closeModal();
   });
@@ -905,7 +830,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const cmdInput = document.getElementById("cmd-input");
   if (cmdInput) cmdInput.addEventListener("input", e => renderCommands(e.target.value));
 
-  // Live clock
   function updateClock() {
     const el = document.getElementById("live-clock");
     if (!el) return;
@@ -914,7 +838,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   updateClock(); setInterval(updateClock, 1000);
 
-  // Date display
   const dateEl = document.getElementById("today-date");
   if (dateEl) {
     const now = new Date();
@@ -926,9 +849,6 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <style>
-/* ══════════════════════════════════════════════════════════════════
-   DESIGN TOKENS
-══════════════════════════════════════════════════════════════════ */
 :root {
   --bg:        #f2f4f9;
   --page-bg:   #ffffff;
@@ -942,7 +862,6 @@ document.addEventListener("DOMContentLoaded", () => {
   --text-3:    #8290b0;
   --text-inv:  #ffffff;
 
-  /* Subject palette */
   --math-c:#3d78f5; --math-bg:#eef2ff; --math-br:#bfcffd;
   --phys-c:#8b5cf6; --phys-bg:#f4f0ff; --phys-br:#d0bbfc;
   --chem-c:#ea580c; --chem-bg:#fff4ef; --chem-br:#fcd5b4;
@@ -951,7 +870,6 @@ document.addEventListener("DOMContentLoaded", () => {
   --arab-c:#e11d48; --arab-bg:#fff1f2; --arab-br:#fecdd3;
   --islm-c:#0284c7; --islm-bg:#f0f9ff; --islm-br:#bae6fd;
 
-  /* Semantics */
   --exam-c:#be123c; --exam-bg:#fff1f2; --exam-br:#fda4af;
   --lec-c: #1d4ed8; --lec-bg: #eff6ff; --lec-br: #bfdbfe;
   --red:   #ef4444;
@@ -1003,9 +921,6 @@ document.addEventListener("DOMContentLoaded", () => {
   --shadow-xl: 0 40px 100px rgba(0,0,0,0.7);
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   RESET & BASE
-══════════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; -webkit-font-smoothing:antialiased; }
 html { font-size:14px; scroll-behavior:smooth; }
 
@@ -1019,7 +934,6 @@ body {
   transition: background 0.4s, color 0.4s;
 }
 
-/* Dynamic background mesh */
 body::before {
   content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
   background:
@@ -1033,9 +947,6 @@ body::before {
     radial-gradient(ellipse 600px 400px at 80% 80%, rgba(139,92,246,0.07) 0%, transparent 70%);
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   PAGE SHELL
-══════════════════════════════════════════════════════════════════ */
 .page {
   position: relative; z-index: 1;
   width: 100%; max-width: 1680px;
@@ -1047,9 +958,6 @@ body::before {
 }
 @keyframes pageIn { from{opacity:0;transform:translateY(22px) scale(0.99)} to{opacity:1;transform:none} }
 
-/* ══════════════════════════════════════════════════════════════════
-   TOP BAR
-══════════════════════════════════════════════════════════════════ */
 .top-bar {
   padding: 0.5rem 1.75rem;
   background: #070c1a;
@@ -1087,9 +995,6 @@ body::before {
 .tb-btn-accent:hover { background:rgba(61,120,245,0.25); color:#8ab4ff; }
 #theme-btn { font-size:0.72rem; }
 
-/* ══════════════════════════════════════════════════════════════════
-   HEADER
-══════════════════════════════════════════════════════════════════ */
 .header {
   padding: 1.75rem 2rem;
   background: var(--surface);
@@ -1117,7 +1022,6 @@ body::before {
 
 .header-right { display:flex; flex-direction:column; align-items:flex-end; gap:0.85rem; }
 
-/* Next lesson bar */
 #next-lesson-bar {
   display:flex; align-items:center; gap:8px;
   padding:7px 14px; border-radius:var(--r-full);
@@ -1137,7 +1041,6 @@ body::before {
   padding:3px 10px; border-radius:var(--r-full);
 }
 
-/* Stats */
 .header-stats { display:flex; align-items:center; gap:6px; }
 .stat-box {
   text-align:center; padding:0.7rem 1.1rem; min-width:72px;
@@ -1149,9 +1052,6 @@ body::before {
 .stat-num { font-family:var(--font-disp); font-size:1.55rem; font-weight:800; color:var(--text); line-height:1; }
 .stat-lbl { font-family:var(--font-mono); font-size:0.42rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-3); margin-top:3px; }
 
-/* ══════════════════════════════════════════════════════════════════
-   ANALYTICS PANEL
-══════════════════════════════════════════════════════════════════ */
 .analytics-strip {
   padding: 1.25rem 2rem;
   background: var(--surface-2);
@@ -1177,7 +1077,6 @@ body::before {
 .donut-item { display:flex; align-items:center; gap:7px; font-size:0.6rem; }
 .donut-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
 
-/* Heatmap */
 .heatmap-block { padding-right:1.5rem; border-right:1px solid var(--border); }
 #heatmap { display:flex; gap:5px; flex-wrap:wrap; }
 .hm-cell {
@@ -1196,9 +1095,6 @@ body::before {
 .hm-val   { font-family:var(--font-mono); font-size:0.78rem; font-weight:700; color:var(--text); }
 .hm-3 .hm-val, .hm-4 .hm-val { color:var(--accent); }
 
-/* ══════════════════════════════════════════════════════════════════
-   FILTER BAR
-══════════════════════════════════════════════════════════════════ */
 .filter-bar {
   padding: 0.7rem 2rem;
   background: var(--surface);
@@ -1230,9 +1126,6 @@ body::before {
 }
 .clear-filters-btn:hover { background:var(--exam-c); color:white; }
 
-/* ══════════════════════════════════════════════════════════════════
-   LEGEND STRIP
-══════════════════════════════════════════════════════════════════ */
 .legend-strip {
   padding: 0.5rem 2rem;
   background: var(--surface-2);
@@ -1266,9 +1159,6 @@ body::before {
 .d-elec    { background:#10b981; }
 .d-tbd     { background:var(--amber); }
 
-/* ══════════════════════════════════════════════════════════════════
-   SKELETON
-══════════════════════════════════════════════════════════════════ */
 .skel {
   background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
   background-size:300% 100%; animation:shimmer 1.5s infinite;
@@ -1276,9 +1166,6 @@ body::before {
 @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 .skel-ev { height:48px; border-radius:var(--r-md); margin-bottom:4px; }
 
-/* ══════════════════════════════════════════════════════════════════
-   GRID
-══════════════════════════════════════════════════════════════════ */
 .grid-main {
   padding: 1.25rem 1.5rem;
   display: grid;
@@ -1287,9 +1174,6 @@ body::before {
   align-items: start;
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   DAY CARD
-══════════════════════════════════════════════════════════════════ */
 .day-card {
   background: var(--surface);
   border: 1.5px solid var(--border);
@@ -1310,7 +1194,6 @@ body::before {
 }
 .day-card.today:hover { box-shadow:0 0 0 4px rgba(61,120,245,0.15), var(--shadow-md); }
 
-/* Drag & drop */
 .day-card.drag-over .card-body { background:rgba(61,120,245,0.05); border-radius:0 0 var(--r-xl) var(--r-xl); }
 .ev.dragging { opacity:0.5; transform:scale(0.97); }
 
@@ -1356,9 +1239,6 @@ body::before {
 .add-lesson-btn svg { width:12px; height:12px; }
 .card-body { padding:0.5rem; display:flex; flex-direction:column; gap:3px; flex:1; min-height:60px; }
 
-/* ══════════════════════════════════════════════════════════════════
-   EVENT ROW
-══════════════════════════════════════════════════════════════════ */
 .ev {
   display:flex; align-items:center; justify-content:space-between; gap:6px;
   padding:6px 8px; border-radius:var(--r-md); border:1px solid var(--border);
@@ -1422,9 +1302,6 @@ body::before {
 .ev-btn-del  { background:var(--exam-bg); border-color:var(--exam-br); color:var(--exam-c); }
 .ev-btn-del:hover  { background:var(--red); color:white; border-color:var(--red); }
 
-/* ══════════════════════════════════════════════════════════════════
-   EMPTY STATE
-══════════════════════════════════════════════════════════════════ */
 .empty-state {
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   padding:1.4rem 1rem; gap:5px;
@@ -1432,9 +1309,6 @@ body::before {
 .empty-icon { font-size:1.3rem; opacity:0.35; }
 .empty-text { font-size:0.6rem; color:var(--text-3); font-weight:500; text-align:center; }
 
-/* ══════════════════════════════════════════════════════════════════
-   NOTES / PRIORITIES CARD
-══════════════════════════════════════════════════════════════════ */
 .notes-card {
   background:var(--surface); border:1.5px solid var(--border);
   border-radius:var(--r-xl); overflow:hidden; display:flex; flex-direction:column;
@@ -1461,9 +1335,6 @@ body::before {
 .prio-icon { font-size:0.7rem; }
 .prio-text { font-size:0.64rem; font-weight:500; color:var(--text-2); flex:1; line-height:1.4; }
 
-/* ══════════════════════════════════════════════════════════════════
-   MODALS
-══════════════════════════════════════════════════════════════════ */
 .modal-overlay {
   display:none; position:fixed; inset:0;
   background:rgba(6,9,18,0.65); backdrop-filter:blur(8px);
@@ -1519,9 +1390,6 @@ body::before {
 .btn-danger { background:var(--red); border-color:var(--red); color:white; }
 .btn-danger:hover { background:#b91c1c; }
 
-/* ══════════════════════════════════════════════════════════════════
-   CONFIRM MODAL
-══════════════════════════════════════════════════════════════════ */
 .confirm-modal {
   display:none; position:fixed; inset:0;
   background:rgba(6,9,18,0.7); backdrop-filter:blur(8px);
@@ -1538,9 +1406,6 @@ body::before {
 .confirm-sub  { font-size:0.65rem; color:var(--text-3); margin-top:4px; }
 .confirm-actions { display:flex; gap:0.5rem; justify-content:center; }
 
-/* ══════════════════════════════════════════════════════════════════
-   COMMAND PALETTE
-══════════════════════════════════════════════════════════════════ */
 #cmd-palette {
   display:none; position:fixed; inset:0;
   background:rgba(4,6,15,0.75); backdrop-filter:blur(10px);
@@ -1584,9 +1449,6 @@ body::before {
 }
 .cmd-hint-item { font-family:var(--font-mono); font-size:0.44rem; color:var(--text-3); display:flex; align-items:center; gap:4px; }
 
-/* ══════════════════════════════════════════════════════════════════
-   ACTIVITY LOG PANEL
-══════════════════════════════════════════════════════════════════ */
 #activity-panel {
   position:fixed; top:0; right:0; bottom:0; width:320px;
   background:var(--surface); border-right:1px solid var(--border);
@@ -1608,9 +1470,6 @@ body::before {
 .act-msg  { font-size:0.65rem; color:var(--text-2); flex:1; line-height:1.4; }
 .act-empty { text-align:center; color:var(--text-3); font-size:0.65rem; padding:2rem; }
 
-/* ══════════════════════════════════════════════════════════════════
-   TOAST
-══════════════════════════════════════════════════════════════════ */
 #toast-cont {
   position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
   z-index:3000; display:flex; flex-direction:column; gap:6px;
@@ -1635,9 +1494,6 @@ body::before {
 [data-theme="dark"] .toast-warn    { background:#1c0a00; border-color:#78350f; color:#fde68a; }
 [data-theme="dark"] .toast-info    { background:#0c1537; border-color:#1e3a8a; color:#bfdbfe; }
 
-/* ══════════════════════════════════════════════════════════════════
-   FOOTER
-══════════════════════════════════════════════════════════════════ */
 .footer {
   padding:0.8rem 2rem; border-top:1px solid var(--border);
   background:var(--surface-2); display:flex; align-items:center;
@@ -1651,9 +1507,6 @@ body::before {
 .shortcut-hint { font-family:var(--font-mono); font-size:0.42rem; color:var(--text-3); display:flex; align-items:center; gap:4px; }
 .shortcut-hint kbd { padding:1px 5px; border:1px solid var(--border-2); border-radius:3px; background:var(--surface-3); font-family:var(--font-mono); font-size:0.42rem; }
 
-/* ══════════════════════════════════════════════════════════════════
-   RESPONSIVE
-══════════════════════════════════════════════════════════════════ */
 @media(max-width:1400px) { .grid-main{grid-template-columns:repeat(4,1fr)} }
 @media(max-width:1200px) { .grid-main{grid-template-columns:repeat(3,1fr)} }
 @media(max-width:900px)  {
@@ -1676,9 +1529,6 @@ body::before {
   .grid-main{grid-template-columns:repeat(5,1fr)}
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   PRINT
-══════════════════════════════════════════════════════════════════ */
 @page { size:A4 landscape; margin:8mm 6mm; }
 @media print {
   html{font-size:11px}
@@ -1693,24 +1543,17 @@ body::before {
   *{transition:none!important;animation:none!important}
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   SCROLLBAR
-══════════════════════════════════════════════════════════════════ */
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:var(--r-full)}
 ::-webkit-scrollbar-thumb:hover{background:var(--text-3)}
 
-/* ══════════════════════════════════════════════════════════════════
-   FOCUS VISIBLE
-══════════════════════════════════════════════════════════════════ */
 :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--r-sm); }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- ═══ TOP BAR ═════════════════════════════════════════════ -->
   <div class="top-bar" role="banner">
     <div class="top-bar-left">
       <span class="conn-dot conn-online" id="conn-status" title="متصل" role="status" aria-live="polite"></span>
@@ -1726,7 +1569,6 @@ body::before {
     </div>
   </div>
 
-  <!-- ═══ HEADER ══════════════════════════════════════════════ -->
   <header class="header">
     <div class="header-logo">
       <div class="logo-icon" role="img" aria-label="شعار الجدول الدراسي">
@@ -1772,7 +1614,6 @@ body::before {
       </div>
     </div>
   </header>
-  <!-- ═══ FILTER BAR ════════════════════════════════════════════ -->
   <div class="filter-bar" role="search" aria-label="فلترة الجدول">
     <div class="search-wrap">
       <span class="search-icon" aria-hidden="true">🔍</span>
@@ -1806,7 +1647,6 @@ body::before {
     <button class="clear-filters-btn" id="clear-filters-btn" onclick="clearFilters()" aria-label="مسح الفلاتر">✕ مسح</button>
   </div>
 
-  <!-- ═══ LEGEND STRIP ══════════════════════════════════════════ -->
   <div class="legend-strip" role="complementary" aria-label="دليل الألوان والرموز">
     <span class="legend-label">المواد</span>
     <span class="subj-chip sc-math"><span class="chip-dot" aria-hidden="true"></span>رياضيات</span>
@@ -1827,10 +1667,8 @@ body::before {
     <span class="mode-chip"><span class="dot d-tbd"     aria-hidden="true"></span>لم يتحدد</span>
   </div>
 
-  <!-- ═══ MAIN GRID ══════════════════════════════════════════════ -->
   <main class="grid-main" id="main-grid" role="main" aria-label="الجدول الأسبوعي">
 
-    <!-- Notes card (persistent) -->
     <div class="notes-card" id="notes-card" role="complementary" aria-label="أولويات الأسبوع">
       <div class="notes-head">
         <div>
@@ -1849,7 +1687,6 @@ body::before {
     </div>
   </main>
 
-  <!-- ═══ FOOTER ════════════════════════════════════════════════ -->
   <footer class="footer">
     <div class="footer-modes" role="list" aria-label="أنواع الحضور">
       <div class="footer-mode-item" role="listitem"><span class="dot d-offline" style="width:7px;height:7px" aria-hidden="true"></span>حضوري</div>
@@ -1859,9 +1696,8 @@ body::before {
     <div class="footer-brand">ACADEMIC <strong>PLANNER</strong> · 2026–2027</div>
   </footer>
 
-</div><!-- .page -->
+</div>
 
-<!-- ═══ LESSON MODAL ═════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal" id="lesson-modal">
     <div class="modal-head">
@@ -1913,7 +1749,6 @@ body::before {
   </div>
 </div>
 
-<!-- ═══ CONFIRM MODAL ════════════════════════════════════════════ -->
 <div class="confirm-modal" id="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg">
   <div class="confirm-box">
     <div class="confirm-icon" aria-hidden="true">🗑</div>
@@ -1928,7 +1763,6 @@ body::before {
   </div>
 </div>
 
-<!-- ═══ COMMAND PALETTE ═══════════════════════════════════════════ -->
 <div id="cmd-palette" role="dialog" aria-modal="true" aria-label="لوحة الأوامر">
   <div class="cmd-box">
     <div class="cmd-search">
@@ -1945,7 +1779,6 @@ body::before {
   </div>
 </div>
 
-<!-- ═══ ACTIVITY LOG PANEL ════════════════════════════════════════ -->
 <div id="activity-panel" role="complementary" aria-label="سجل الأنشطة">
   <div class="panel-head">
     <div class="panel-title">سجل الأنشطة</div>
@@ -1954,7 +1787,6 @@ body::before {
   <div id="activity-list" role="log" aria-live="polite"></div>
 </div>
 
-<!-- ═══ TOAST CONTAINER ══════════════════════════════════════════ -->
 <div id="toast-cont" role="alert" aria-live="assertive" aria-atomic="true"></div>
 
 <script>window._schedData = null;</script>
